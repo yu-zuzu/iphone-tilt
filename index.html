@@ -11,6 +11,9 @@
 
     <button id="start">センサーを開始</button>
 
+    <h2>接続状態</h2>
+    <p id="connection">未接続</p>
+
     <h2>傾き</h2>
 
     <p>前後（Beta）: <span id="beta">---</span></p>
@@ -18,9 +21,34 @@
     <p>回転（Alpha）: <span id="alpha">---</span></p>
 
     <script>
+        const serverUrl =
+            "wss://drop-gilbert-chris-copy.trycloudflare.com";
+
+        let socket;
+
         document.getElementById("start").addEventListener("click", async () => {
 
+            // WebSocket接続
+            socket = new WebSocket(serverUrl);
+
+            socket.addEventListener("open", () => {
+                document.getElementById("connection").textContent =
+                    "Macに接続しました！";
+            });
+
+            socket.addEventListener("close", () => {
+                document.getElementById("connection").textContent =
+                    "Macとの接続が切れました";
+            });
+
+            socket.addEventListener("error", () => {
+                document.getElementById("connection").textContent =
+                    "接続エラー";
+            });
+
+            // iPhoneのセンサー許可
             if (typeof DeviceOrientationEvent.requestPermission === "function") {
+
                 const permission =
                     await DeviceOrientationEvent.requestPermission();
 
@@ -32,14 +60,31 @@
 
             window.addEventListener("deviceorientation", (event) => {
 
-                document.getElementById("alpha").textContent =
-                    event.alpha?.toFixed(1);
+                const beta = event.beta ?? 0;
+                const gamma = event.gamma ?? 0;
+                const alpha = event.alpha ?? 0;
 
+                // 画面に表示
                 document.getElementById("beta").textContent =
-                    event.beta?.toFixed(1);
+                    beta.toFixed(1);
 
                 document.getElementById("gamma").textContent =
-                    event.gamma?.toFixed(1);
+                    gamma.toFixed(1);
+
+                document.getElementById("alpha").textContent =
+                    alpha.toFixed(1);
+
+                // Macへ送信
+                if (socket && socket.readyState === WebSocket.OPEN) {
+
+                    const data = {
+                        beta: beta,
+                        gamma: gamma,
+                        alpha: alpha
+                    };
+
+                    socket.send(JSON.stringify(data));
+                }
             });
         });
     </script>
